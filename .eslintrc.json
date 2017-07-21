@@ -10,7 +10,7 @@
     "rules": {
         "indent": [
             "off",
-            4
+            2
         ],
         "linebreak-style": [
             "warn",

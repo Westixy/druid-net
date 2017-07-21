@@ -6,7 +6,7 @@
   "scripts": {
     "server": "node try-druid.srv.js",
     "client": "node try-druid.cli.js",
-    "test": "japa test-druid.js"
+    "test": "node test-druid.js"
   },
   "repository": {
     "type": "git",

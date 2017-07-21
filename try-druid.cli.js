@@ -1,5 +1,7 @@
 const druid = require('./druid-net.js')
 
+druid.PARAMS.debug=false
+
 const client = new druid.Client({
   onConnect(){
     console.log(`Client connected to ${client.srvIp}:${client.srvPort}`)

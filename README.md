@@ -32,7 +32,7 @@ const client = new Client()
 client.emit('anEvent',{some:'data'})
 // recive some
 client.on('anEvent',(data)=>{
-    // do what to do width data
+    // do what to do with data
 })
 
 client.connect()

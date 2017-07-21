@@ -14,8 +14,9 @@ const DNET_STATE={
 
 const ENCODING = 'utf8'
 const SPLIT_CHAR = '\u001a'
-
-let debug = true
+const PARAMS={
+  debug:true
+}
 
 const tool = {
   stateToString(state){
@@ -36,7 +37,7 @@ const tool = {
     args
   })+SPLIT_CHAR},
   log(...args){
-    if(debug){
+    if(PARAMS.debug){
       flog('# DEBUG : '+args.join(' '))
     }
   }
@@ -383,7 +384,7 @@ module.exports={
   DNET_STATE,
   tool,
   ENCODING,
-  debug,
+  PARAMS,
   Client,
   Server,
   ClientOfServer,

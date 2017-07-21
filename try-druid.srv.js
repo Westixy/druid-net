@@ -1,5 +1,7 @@
 const druid = require('./druid-net.js')
 
+druid.PARAMS.debug=false
+
 const server = new druid.Server()
 
 server.on('helloSrv',(client,data)=>{
