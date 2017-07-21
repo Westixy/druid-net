@@ -1,0 +1,34 @@
+{
+  "name": "druid-net",
+  "version": "1.0.0",
+  "description": "TCP/IP event based library",
+  "main": "druid-net.js",
+  "scripts": {
+    "server": "node try-druid.srv.js",
+    "client": "node try-druid.cli.js",
+    "test": "japa test-druid.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Westixy/druid-net.git"
+  },
+  "keywords": [
+    "node",
+    "tcp",
+    "event",
+    "tcp emitter"
+  ],
+  "author": "Westixy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Westixy/druid-net/issues"
+  },
+  "homepage": "https://github.com/Westixy/druid-net#readme",
+  "dependencies": {
+    "uniqueid": "^1.0.0"
+  },
+  "devDependencies": {
+    "fancy-log": "^1.3.0",
+    "japa": "^1.0.3"
+  }
+}
