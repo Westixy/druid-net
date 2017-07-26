@@ -88,11 +88,12 @@ class Client {
 
   _tryReconnect(){
     this._tries++
-    tool.log('Client:_tryReconnect:tries',`${this._tries}/${this._maxTries}`)    
+    tool.log('Client:_tryReconnect:tries',`${this._tries}/${this._maxTries}`) 
     if(this._tries>=this._maxTries){
       this._clearTimeoutHandler()
       this.event.emit('error',new Error('Number of tries exceeded'))
     }else{
+      this.event.emit('try_reconnect',this._tries,this._maxTries)
       this._reconnectTimeoutHandler = setTimeout(()=>this.connect(),this._timeBtwTries)
     }
   }
