@@ -374,6 +374,8 @@ class Queue{
   }
 }
 
+// TODO BUG : when buffer is overflow, packet error occure (JSON.parse) because of the json is split in multiple part... need to fix it but not now (one day maybe)
+
 module.exports={
   DNET_STATE,
   tool,
