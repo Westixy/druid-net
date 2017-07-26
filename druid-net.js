@@ -15,7 +15,10 @@ const DNET_STATE={
 const ENCODING = 'utf8'
 const SPLIT_CHAR = '\u001a'
 const PARAMS={
-  debug:true
+  debug:false,
+  port:1337,
+  listenIp:'0.0.0.0',
+  connectIp:'127.0.0.1'
 }
 
 const tool = {
@@ -52,40 +55,29 @@ const tool = {
 
 class Client {
   constructor({
-      srvIp='127.0.0.1',
-      srvPort='1337',
+      srvIp=PARAMS.connectIp,
+      srvPort=PARAMS.port,
       socket=undefined,
       maxTries=100,
       timeBtwTries=1000,
-      onConnect=()=>{},
-      onDisconnect=()=>{},
-      onStateChange=()=>{},
-      onClose=()=>{},
-      onData=()=>{},
-      onError=()=>{}
     }={}) {
     tool.log('Client:constructor')
     this.srvIp=srvIp
     this.srvPort=srvPort
+    this.event=new Emitter()
     this._initSocket(socket)
     this._maxTries=maxTries
     this._timeBtwTries=timeBtwTries
     this._tries=0
     this.state=DNET_STATE.DISCONNECTED
     this._em=new Emitter()
-    this._ev={
-      onConnect,
-      onDisconnect,
-      onStateChange,
-      onClose,
-      onData,
-      onError
-    }
+    this._diconnectByClient=false
+    this._reconnectTimeoutHandler=null
     this.meta={}
   }
 
   on(ev,callback){
-    tool.log('Client:on')
+    tool.log('Client:on:'+ev)
     this._em.on(ev,callback)
   }
 
@@ -95,17 +87,26 @@ class Client {
   }
 
   _tryReconnect(){
-    tool.log('Client:_tryReconnect')
     this._tries++
+    tool.log('Client:_tryReconnect:tries',`${this._tries}/${this._maxTries}`)    
     if(this._tries>=this._maxTries){
-      this._ev.onError(new Error('Number of tries exeeded'))
+      this._clearTimeoutHandler()
+      this.event.emit('error',new Error('Number of tries exceeded'))
     }else{
-      setTimeout(()=>this.connect(),this._timeBtwTries)
+      this._reconnectTimeoutHandler = setTimeout(()=>this.connect(),this._timeBtwTries)
+    }
+  }
+
+  _clearTimeoutHandler(){
+    tool.log('Client:_clearTimeoutHandler')
+    if(this._reconnectTimeoutHandler!==null){
+      clearTimeout(this._reconnectTimeoutHandler)
+      this._reconnectTimeoutHandler=null
     }
   }
 
   _initSocket(socket=new net.Socket()){
-    tool.log('Client:constructor')
+    tool.log('Client:_initSocket')
     this.socket=socket
     this.socket.setEncoding(ENCODING)
     this.socket.setNoDelay(false)
@@ -120,24 +121,24 @@ class Client {
     this.socket.on('connect',()=>{
       this._tries=0
       this._changeState(DNET_STATE.CONNECTED)
-      this._ev.onConnect()
+      this.event.emit('connect')
     })
     this.socket.on('close',had_error=>{
       this._changeState(DNET_STATE.DISCONNECTED)
-      this._ev.onDisconnect()
-      if(had_error){
+      this.event.emit('disconnect',had_error)
+      if(!this._diconnectByClient){
         this._tryReconnect()
       }
     })
+    this.event.on('error',(err)=>tool.log('ERROR :',err.toString()))
     this.socket.on('error',err=>{
-      this._ev.onError(err)
-      tool.log('ERROR :',err)
+      this.event.emit('error',err)
     })
     this.socket.on('data', data=>{
       data=tool.parseData(data)
       tool.log('Client:Socket:ondata-->'+data)
       data.forEach(d=>{
-        this._ev.onData(d)
+        this.event.emit('data',d)
         if(d._action=='event')
           this._em.emit(d.ev,...d.args)
       })
@@ -148,12 +149,13 @@ class Client {
   _changeState(state){
     tool.log('STATE CHANGE :',tool.stateToString(state))
     this.state=state
-    this._ev.onStateChange(state)
+    this.event.emit('state_change',state,tool.stateToString(state))    
   }
 
   connect(){
     tool.log('Client:connect')
-    if(this.socket!==undefined){
+    this._clearTimeoutHandler()
+    if(this.socket===undefined){
       this._initSocket()
     }
     this._changeState(DNET_STATE.CONNECTING)
@@ -162,6 +164,8 @@ class Client {
 
   disconnect(){
     tool.log('Client:disconnect')
+    this._clearTimeoutHandler()    
+    this._diconnectByClient=true
     this.socket.destroy()
   }
 }
@@ -203,15 +207,8 @@ class ClientOfServer {
 
 class Server{
   constructor({
-      listenIp='0.0.0.0',
-      listenPort='1337',
-      onStart=()=>{},
-      onStop=()=>{},
-      onError=()=>{},
-      onData=()=>{},
-      onClientConnect=()=>{},
-      onClientDisconnect=()=>{},
-      onClientRemoved=()=>{},
+      ip=PARAMS.listenIp,
+      port=PARAMS.port,
     }={}) {
     tool.log('Server:constructor')
     this.clients={
@@ -219,19 +216,11 @@ class Server{
       uid:{}
     }
     this.listen={
-      ip:listenIp,
-      port:listenPort
-    }
-    this._ev={
-      onStart,
-      onStop,
-      onError,
-      onData,
-      onClientConnect,
-      onClientDisconnect,
-      onClientRemoved
+      ip,
+      port
     }
     this.state=DNET_STATE.DISCONNECTED
+    this.event=new Emitter()
     this._em=new Emitter()
     this._initServer()
   }
@@ -286,14 +275,17 @@ class Server{
     this.server=net.createServer(socket=>this._addClient(socket))
     this.server.on('close',(...args)=>{
       this.state=DNET_STATE.DISCONNECTED
-      this._ev.onStop(...args)
+      this.event.emit('stop',...args)
     })
+    this.event.on('error',(err)=>tool.log('ERROR :',err.toString()))
     this.server.on('listening',(...args)=>{
       tool.log('Server:on:listrening')
       this.state=DNET_STATE.LISTENING
-      this._ev.onStart(...args)
+      this.event.emit('start',...args)
     })
-    this.server.on('error',this._ev.onError)
+    this.server.on('error',(...args)=>{
+      this.event.emit('error',...args)      
+    })
   }
 
   _addClient(socket){
@@ -307,19 +299,20 @@ class Server{
       tool.log(`COS[${cli.uid}]:socket:on:data --> `+data)
       data.forEach((d,i)=>{
         tool.log(`COS[${cli.uid}]:socket:on:data[${i}] --> [ ${d._action} , ${d.ev} , ${d.args} ]`)
-        this._ev.onData(d)
+        this.event.emit('data',d)
+        
         if(d._action=='event')
           this._em.emit(d.ev,cli,...d.args)
       })
     })
     socket.on('close',(...args)=>{
       tool.log(`COS[${cli.uid}]:socket:on:close (disconnected)`)
-      this._ev.onClientDisconnect(cli,...args)
+      this.event.emit('client_disconnect',cli,...args)
       this._removeClient(cli)
     })
     this.clients.uid[cli.uid]=cli
     this.clients.array.push(cli)
-    this._ev.onClientConnect(cli)
+    this.event.emit('client_connect',cli)
   }
 
   _removeClient(socket){
@@ -327,7 +320,7 @@ class Server{
     const clio = (socket instanceof net.Socket)?
       this._findClient(socket):
       {client:socket,index:this.clients.array.indexOf(socket)}
-    this._ev.onClientRemoved(clio.client)
+    this.event.emit('client_removed',clio.client)
     this.clients.array.splice(clio.index,1)    
     delete this.clients.uid[clio.client.uid]
     tool.log('Server:_removeClient:removed:'+clio.client.uid)    

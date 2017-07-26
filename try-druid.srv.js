@@ -1,6 +1,6 @@
 const druid = require('./druid-net.js')
 
-druid.PARAMS.debug=false
+druid.PARAMS.debug=true
 
 const server = new druid.Server()
 
