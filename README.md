@@ -2,6 +2,8 @@
 
 Simple node TCP-IP event manager
 
+## This is a test, dont use it for production he is fully bugged
+
 ## Getting started
 
 Server :
